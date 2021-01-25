@@ -11,30 +11,77 @@ using Newtonsoft.Json;
 
 namespace csharp9demo
 {
+
+    /// <summary>
+    /// 
+    /// </summary>
     public class ApiWrapper
     {
-        private HttpClient httpClient;
-        public ApiWrapper(HttpClient httpClient) => this.httpClient = httpClient;
 
-        public async Task<Taco> GetRandomTaco(bool fullTaco = false)
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly HttpClient httpClient;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="httpClient"></param>
+        public ApiWrapper(
+            HttpClient httpClient)
         {
-            var json = await httpClient.GetStringAsync($"/random/?full-taco={fullTaco}");
+            
+            //
+            this.httpClient = httpClient;
 
-            dynamic apiObject = JsonConvert.DeserializeObject<dynamic>(
-                json,
-                new ExpandoObjectConverter())!;
+            // Writing to an init only setter
+            Guid = System.Guid.Empty.ToString();
 
-            static Ingredient? ingredientConverter(dynamic d) => 
-                d != null 
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <remarks>
+        /// C# 9.0 - Init only setter
+        /// Notes:
+        ///     - Used for building immutable data. 
+        ///     - The "init" accessor makes immutable objects more flexible by allowing the caller to mutate the members during the act of construction.
+        /// </remarks>
+        public string Guid { get; init; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fullTaco"></param>
+        /// <returns></returns>
+        public async Task<Taco> GetRandomTaco(
+            bool fullTaco = false)
+        {
+
+            //
+            var json =
+                await httpClient.GetStringAsync($"/random/?full-taco={fullTaco}");
+
+            //
+            dynamic apiObject =
+                JsonConvert.DeserializeObject<dynamic>(
+                    json,
+                    new ExpandoObjectConverter())!;
+
+            //
+            static Ingredient? ingredientConverter(dynamic d) =>
+                d != null
                     ? new Ingredient
                     {
                         Url = d.url,
                         Name = d.name,
                         Recipe = d.recipe,
                         Slug = d.slug
-                    } 
+                    }
                     : null;
 
+            //
             return new Taco
             {
                 Name = apiObject.name,
@@ -47,6 +94,7 @@ namespace csharp9demo
                 BaseLayer = ingredientConverter(apiObject.base_layer),
                 Shell = ingredientConverter(apiObject.shell)
             };
+
         }
 
         /// <summary>
@@ -54,16 +102,53 @@ namespace csharp9demo
         /// </summary>
         /// <param name="fullTaco"></param>
         /// <returns></returns>
-        public Task<Taco> GetCleanRandomTaco(bool fullTaco = false) =>
-            GetGoodRandomTaco((_, i) => !i.NameHasPunctuation(), fullTaco);
+        public Task<Taco> GetCleanRandomTaco(
+            bool fullTaco = false) =>
+            GetGoodRandomTaco(
+                (_, i) => !i.NameHasPunctuation(), fullTaco); // Another example of lambda discard parameter
 
         /// <summary>
         /// Returns a taco whose name contains the name of all of its ingredients.
         /// </summary>
         /// <param name="fullTaco"></param>
         /// <returns></returns>
-        public Task<Taco> GetDescriptiveRandomTaco(bool fullTaco = false) =>
-            GetGoodRandomTaco((t, i) => t.Name.Contains(i.Name), fullTaco);
+        public Task<Taco> GetDescriptiveRandomTaco(
+            bool fullTaco = false) =>
+            GetGoodRandomTaco(
+                (t, i) => t.Name.Contains(i.Name), fullTaco);
+
+        ///// <summary>
+        ///// Get a random taco where each ingredient meets some parameter, what good means
+        ///// is up to the consumer.
+        ///// </summary>
+        ///// <param name="func"></param>
+        ///// <param name="fullTaco"></param>
+        ///// <returns></returns>
+        //public async Task<Taco> GetGoodRandomTaco(
+        //    Func<Taco, Ingredient, bool> func,
+        //    bool fullTaco = false)
+        //{
+
+        //    //
+        //    Taco t;
+        //    bool good;
+
+        //    //
+        //    do
+        //    {
+        //        good = true;
+        //        t = await GetRandomTaco(fullTaco);
+        //        var enumerator = t.GetEnumerator();
+        //        while (enumerator.MoveNext())
+        //            if (!func(t, enumerator.Current))
+        //                good = false;
+        //    }
+        //    while (!good);
+
+        //    //
+        //    return t;
+
+        //}
 
         /// <summary>
         /// Get a random taco where each ingredient meets some parameter, what good means
@@ -72,22 +157,46 @@ namespace csharp9demo
         /// <param name="func"></param>
         /// <param name="fullTaco"></param>
         /// <returns></returns>
-        public async Task<Taco> GetGoodRandomTaco(Func<Taco, Ingredient, bool> func, bool fullTaco = false)
+        public async Task<Taco> GetGoodRandomTaco(
+            Func<Taco, Ingredient, bool> func,
+            bool fullTaco = false)
         {
+
+            //
             Taco t;
             bool good;
+
+            //
             do
             {
+                
                 good = true;
+
                 t = await GetRandomTaco(fullTaco);
-                var enumerator = t.GetEnumerator();
-                while (enumerator.MoveNext())
-                    if (!func(t, enumerator.Current))
+
+                //var enumerator = t.GetEnumerator();
+
+                //while (enumerator.MoveNext())
+                //    if (!func(t, enumerator.Current))
+                //        good = false;
+
+                foreach (var item in t)
+                    if (!func(t, item))
                         good = false;
+
+                /* C# 9.0 - Extensions GetEnumerator support for foreach loop
+                 * Notes:
+                 *  - ?
+                 */
+
             }
             while (!good);
 
+            //
             return t;
+
         }
+
     }
+
 }
